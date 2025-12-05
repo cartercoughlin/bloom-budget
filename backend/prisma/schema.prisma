@@ -1,0 +1,185 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model for authentication
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  plaidAccounts      PlaidAccount[]
+  transactions       Transaction[]
+  categories         Category[]
+  budgets            Budget[]
+  fraudAlerts        FraudAlert[]
+  categorizationRules CategorizationRule[]
+
+  @@map("users")
+}
+
+// Plaid Account model
+model PlaidAccount {
+  id                 String   @id @default(uuid())
+  userId             String   @map("user_id")
+  plaidAccountId     String   @unique @map("plaid_account_id")
+  plaidAccessToken   String   @map("plaid_access_token") // Encrypted
+  plaidItemId        String   @map("plaid_item_id")
+  accountName        String   @map("account_name")
+  accountType        String   @map("account_type") // depository, credit, loan, investment
+  accountSubtype     String   @map("account_subtype")
+  currentBalance     Decimal  @map("current_balance") @db.Decimal(12, 2)
+  availableBalance   Decimal? @map("available_balance") @db.Decimal(12, 2)
+  syncCursor         String?  @map("sync_cursor")
+  lastSyncedAt       DateTime @map("last_synced_at")
+  isActive           Boolean  @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@index([userId])
+  @@map("plaid_accounts")
+}
+
+// Transaction model
+model Transaction {
+  id                   String   @id @default(uuid())
+  userId               String   @map("user_id")
+  accountId            String   @map("account_id")
+  plaidTransactionId   String   @unique @map("plaid_transaction_id")
+  amount               Decimal  @db.Decimal(12, 2)
+  date                 DateTime
+  merchantName         String?  @map("merchant_name")
+  description          String
+  categoryId           String?  @map("category_id")
+  categoryConfidence   Int      @default(0) @map("category_confidence") // 0-100
+  isPending            Boolean  @default(false) @map("is_pending")
+  locationCity         String?  @map("location_city")
+  locationRegion       String?  @map("location_region")
+  locationCountry      String?  @map("location_country")
+  isFraudulent         Boolean  @default(false) @map("is_fraudulent")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account     PlaidAccount  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  category    Category?     @relation(fields: [categoryId], references: [id])
+  fraudAlerts FraudAlert[]
+
+  @@index([userId])
+  @@index([accountId])
+  @@index([categoryId])
+  @@index([date])
+  @@index([merchantName])
+  @@map("transactions")
+}
+
+// Category model
+model Category {
+  id               String   @id @default(uuid())
+  userId           String?  @map("user_id") // null for system categories
+  name             String
+  icon             String
+  color            String
+  parentCategoryId String?  @map("parent_category_id")
+  isSystem         Boolean  @default(false) @map("is_system")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user                User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parentCategory      Category?            @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id])
+  subCategories       Category[]           @relation("CategoryHierarchy")
+  transactions        Transaction[]
+  budgets             Budget[]
+  categorizationRules CategorizationRule[]
+
+  @@index([userId])
+  @@index([parentCategoryId])
+  @@map("categories")
+}
+
+// Budget model
+model Budget {
+  id             String   @id @default(uuid())
+  userId         String   @map("user_id")
+  categoryId     String   @map("category_id")
+  amount         Decimal  @db.Decimal(12, 2)
+  period         String   // monthly, quarterly, annual
+  startDate      DateTime @map("start_date")
+  endDate        DateTime @map("end_date")
+  alertThreshold Int      @default(80) @map("alert_threshold") // Percentage
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id])
+
+  @@index([userId])
+  @@index([categoryId])
+  @@index([startDate, endDate])
+  @@map("budgets")
+}
+
+// Fraud Alert model
+model FraudAlert {
+  id              String    @id @default(uuid())
+  userId          String    @map("user_id")
+  transactionId   String    @map("transaction_id")
+  alertType       String    @map("alert_type") // unusual_amount, unusual_location, rapid_transactions
+  severity        String    // low, medium, high
+  reason          String
+  isReviewed      Boolean   @default(false) @map("is_reviewed")
+  isFalsePositive Boolean   @default(false) @map("is_false_positive")
+  reviewedAt      DateTime? @map("reviewed_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([transactionId])
+  @@index([isReviewed])
+  @@map("fraud_alerts")
+}
+
+// Categorization Rule model
+model CategorizationRule {
+  id               String   @id @default(uuid())
+  userId           String   @map("user_id")
+  merchantPattern  String   @map("merchant_pattern") // Regex pattern
+  categoryId       String   @map("category_id")
+  priority         Int      @default(0)
+  learnedFromUser  Boolean  @default(false) @map("learned_from_user")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id])
+
+  @@index([userId])
+  @@index([categoryId])
+  @@index([priority])
+  @@map("categorization_rules")
+}
