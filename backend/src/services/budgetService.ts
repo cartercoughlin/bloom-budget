@@ -92,10 +92,13 @@ export class BudgetService {
         endDate: input.endDate,
         alertThreshold: input.alertThreshold || 80,
         isActive: true,
+      },
+      include: {
+        category: true
       }
     });
 
-    return BudgetModel.toResponse(budget);
+    return BudgetModel.toResponse(budget, budget.category.name);
   }
 
   /**
@@ -103,17 +106,20 @@ export class BudgetService {
    */
   async getBudgets(userId: string, includeInactive: boolean = false): Promise<BudgetResponse[]> {
     const where: any = { userId };
-    
+
     if (!includeInactive) {
       where.isActive = true;
     }
 
     const budgets = await prisma.budget.findMany({
       where,
+      include: {
+        category: true
+      },
       orderBy: { createdAt: 'desc' }
     });
 
-    return budgets.map(BudgetModel.toResponse);
+    return budgets.map(budget => BudgetModel.toResponse(budget, budget.category.name));
   }
 
   /**
@@ -124,6 +130,9 @@ export class BudgetService {
       where: {
         id: budgetId,
         userId
+      },
+      include: {
+        category: true
       }
     });
 
@@ -131,7 +140,7 @@ export class BudgetService {
       return null;
     }
 
-    return BudgetModel.toResponse(budget);
+    return BudgetModel.toResponse(budget, budget.category.name);
   }
 
   /**
@@ -185,10 +194,13 @@ export class BudgetService {
         ...(input.endDate && { endDate: input.endDate }),
         ...(input.alertThreshold !== undefined && { alertThreshold: input.alertThreshold }),
         ...(input.isActive !== undefined && { isActive: input.isActive }),
+      },
+      include: {
+        category: true
       }
     });
 
-    return BudgetModel.toResponse(updated);
+    return BudgetModel.toResponse(updated, updated.category.name);
   }
 
   /**

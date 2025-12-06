@@ -31,7 +31,7 @@ export function BudgetForm({ budget, onClose }: BudgetFormProps) {
   const { data: categoriesData } = useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
-      const response = await fetch('/api/categories', {
+      const response = await fetch('/api/transactions/categories', {
         credentials: 'include',
       });
       if (!response.ok) return { categories: [] };

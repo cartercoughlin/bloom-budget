@@ -219,6 +219,20 @@ npm test
 
 MIT
 
+## Recent Changes
+
+### Budget Category Display Fix
+Fixed two issues related to budget category display:
+
+1. **"Unknown Category" display issue**: Budgets were showing as "Unknown Category" in the dashboard
+   - Updated `budgetService.ts` to include category data in all budget queries (getBudgets, getBudgetById, createBudget, updateBudget)
+   - Modified `BudgetModel.toResponse()` to accept and include categoryName
+   - Updated `BudgetResponse` interface to include optional `categoryName` field
+
+2. **Empty category dropdown issue**: Category dropdown in budget creation form was empty
+   - Fixed the API endpoint URL in `BudgetForm.tsx` from `/api/categories` to `/api/transactions/categories`
+   - This matches the actual backend endpoint that returns available categories
+
 ## Support
 
 For issues and questions, please open an issue on GitHub.

@@ -16,6 +16,7 @@ export interface BudgetResponse {
   id: string;
   userId: string;
   categoryId: string;
+  categoryName?: string;
   amount: number;
   period: string;
   startDate: Date;
@@ -87,11 +88,12 @@ export class BudgetModel {
   /**
    * Convert Prisma Budget to response format
    */
-  static toResponse(budget: PrismaBudget): BudgetResponse {
+  static toResponse(budget: PrismaBudget, categoryName?: string): BudgetResponse {
     return {
       id: budget.id,
       userId: budget.userId,
       categoryId: budget.categoryId,
+      categoryName: categoryName,
       amount: Number(budget.amount),
       period: budget.period,
       startDate: budget.startDate,
