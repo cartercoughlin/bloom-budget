@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) return;
 
-    let timeoutId: NodeJS.Timeout;
+    let timeoutId: number;
 
     const resetTimeout = () => {
       if (timeoutId) clearTimeout(timeoutId);

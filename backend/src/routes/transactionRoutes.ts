@@ -96,7 +96,7 @@ router.patch('/:id/category', async (req: Request, res: Response) => {
       return res.status(404).json({ error: error.message });
     }
     
-    res.status(500).json({ error: 'Failed to update transaction category' });
+    return res.status(500).json({ error: 'Failed to update transaction category' });
   }
 });
 
@@ -125,7 +125,7 @@ router.post('/sync/:accountId', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('Error during manual sync:', error.message);
-    res.status(500).json({ error: 'Failed to sync transactions' });
+    return res.status(500).json({ error: 'Failed to sync transactions' });
   }
 });
 
